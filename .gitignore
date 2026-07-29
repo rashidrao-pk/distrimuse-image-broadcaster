@@ -16,3 +16,6 @@ bags/
 
 # claude code
 .claude/
+
+
+pixi.lock
