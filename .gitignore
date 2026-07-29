@@ -7,6 +7,8 @@ __pycache__/
 
 # config with credentials
 config/config.yaml
+config/cf_mac.yaml
+!config/default.yaml
 
 # rosbag recordings
 bags/
@@ -18,4 +20,4 @@ bags/
 .claude/
 
 
-pixi.lock
+

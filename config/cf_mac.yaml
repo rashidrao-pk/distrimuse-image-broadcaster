@@ -1,15 +1,14 @@
 data:
   masks:
-  dataset_base: '/Users/rashid/data/DS/SR/v6/Jul27'
-  rosbag_basepath: '/Users/rashid/data/DS/SR/v6/Jul27/Jul27_Scenario_1_0_2026-07-27_10-25-24'
-  rosbag_path: '/Users/rashid/data/DS/SR/v6/Jul27/Jul27_Scenario_1_0_2026-07-27_10-25-24/Jul27_Scenario_1_0_2026-07-27_10-25-24_0.mcap'
+  dataset_base: "/Users/rashid/data/DS/SR/v6/Jul27"
+  rosbag_basepath: "/Users/rashid/data/DS/SR/v6/Jul27/Jul27_Scenario_1_0_2026-07-27_10-25-24"
+  rosbag_path: "/Users/rashid/data/DS/SR/v6/Jul27/Jul27_Scenario_1_0_2026-07-27_10-25-24/Jul27_Scenario_1_0_2026-07-27_10-25-24_0.mcap"
   mask_types:
-    - 'PLeft'
-    - 'PRight'
-    - 'ConveBelt'
+    - "PLeft"
+    - "PRight"
+    - "ConveBelt"
 scenario:
-  id: '1_0'
-
+  id: "1_0"
 
 playback_options:
-  loop: True  
+  loop: True

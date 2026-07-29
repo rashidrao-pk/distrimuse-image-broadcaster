@@ -1,0 +1,12 @@
+data:
+  masks:
+  dataset_base: "path/to/dataset"
+  rosbag_basepath: "path/to/rosbag/"
+  rosbag_path: "path/to/rosbag/rosbag.mcap"
+  mask_types:
+    - "PLeft"
+scenario:
+  id: "1_0"
+
+playback_options:
+  loop: True
