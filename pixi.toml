@@ -15,6 +15,7 @@ CYCLONEDDS_URI = "file://${PIXI_PROJECT_ROOT}/config/cyclonedds-macos.xml"
 
 [tasks]
 broadcast = "python -m cam_recorder.broadcaster"
+inspect-rosbag = "python -m cam_recorder.inspect_rosbag"
 replay = "python -m cam_recorder.replay"
 replay_formatted = "python -m cam_recorder.replay_formatted"
 replay-raw = "python -m cam_recorder.replay"

@@ -28,6 +28,7 @@ Edit `config/config.yaml` with your camera names, RTSP URLs, desired FPS, and to
 | Task               | Description                                  | Usage                                      |
 | ------------------ | -------------------------------------------- | ------------------------------------------ |
 | `broadcast`        | Publish camera streams as ROS2 Image topics  | `pixi run broadcast`                       |
+| `inspect-rosbag`   | Inspect topics and sample frame information  | `pixi run inspect-rosbag`                  |
 | `replay`           | Replay a rosbag supplied directly on the CLI | `pixi run replay <bag_path>`               |
 | `replay_formatted` | Replay the rosbag configured for a scenario  | `pixi run replay_formatted --scenario 1_0` |
 | `view`             | Display live camera topics in OpenCV windows | `pixi run view`                            |
@@ -191,3 +192,31 @@ pixi run replay /path/to/recording_0.mcap --loop
 ```
 
 Press `Ctrl+C` to stop playback.
+
+## Inspect rosbag contents
+
+Inspect the rosbag selected by `config/cf_mac.yaml` without replaying it:
+
+```bash
+pixi run inspect-rosbag
+```
+
+The report includes bag size and duration, topic names and types, message
+counts, recorded field definitions, and a sample from every topic. Image
+samples also show their bag and ROS timestamps, frame ID, compression format,
+dimensions, channels, and payload size.
+
+Useful options:
+
+```bash
+# Inspect a rosbag supplied directly
+pixi run inspect-rosbag /path/to/recording_0.mcap
+
+# Inspect three frames from one camera
+pixi run inspect-rosbag \
+  --topic /camera/front_view/image_raw \
+  --frames 3
+
+# Use another configuration
+pixi run inspect-rosbag --config /path/to/replay.yaml
+```
