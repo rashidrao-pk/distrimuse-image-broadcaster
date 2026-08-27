@@ -16,6 +16,10 @@ from cam_recorder.viewer import CameraViewerNode
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "cf_mac.yaml"
+CAMERA_TOPICS = {
+    "back_view": "/camera/back_view/image_raw",
+    "front_view": "/camera/front_view/image_raw",
+}
 
 
 def load_replay_config(config_path: Path) -> dict:
@@ -27,11 +31,13 @@ def load_replay_config(config_path: Path) -> dict:
         config = yaml.safe_load(config_file) or {}
 
     data = config.get("data")
-    scenario = config.get("scenario")
-    if not isinstance(data, dict) or not data.get("rosbag_path"):
-        raise ValueError("Config must define data.rosbag_path")
-    if not isinstance(scenario, dict) or scenario.get("id") is None:
-        raise ValueError("Config must define scenario.id")
+    scenario_options = config.get("scenario_options") or config.get(
+        "scanario_options"
+    )
+    if not isinstance(data, dict):
+        raise ValueError("Config must define data")
+    if not data.get("rosbag_path") and not isinstance(scenario_options, dict):
+        raise ValueError("Config must define data.rosbag_path or scenario_options")
 
     return config
 
@@ -74,6 +80,12 @@ def parse_args(argv=None):
         help="Playback rate (overrides playback_options.rate)",
     )
     parser.add_argument(
+        "--camera",
+        choices=("back_view", "front_view", "both"),
+        default=None,
+        help="Camera topic(s) to publish (default: playback_options.camera)",
+    )
+    parser.add_argument(
         "--no-display",
         action="store_true",
         help="Play without the camera viewer",
@@ -82,16 +94,34 @@ def parse_args(argv=None):
 
 
 def resolve_options(args, config):
-    configured_scenario = str(config["scenario"]["id"])
-    if args.scenario != configured_scenario:
-        raise ValueError(
-            f"Scenario {args.scenario!r} does not match configured scenario "
-            f"{configured_scenario!r} in {args.config}"
-        )
+    scenario_options = config.get("scenario_options") or config.get(
+        "scanario_options"
+    )
+    if isinstance(scenario_options, dict):
+        scenario_config = scenario_options.get(args.scenario)
+        if not isinstance(scenario_config, dict):
+            available = ", ".join(sorted(scenario_options))
+            raise ValueError(
+                f"Unknown scenario key {args.scenario!r}. Available: {available}"
+            )
+        configured_path = scenario_config.get("rosbag_path")
+        if not configured_path:
+            raise ValueError(
+                f"scenario_options.{args.scenario}.rosbag_path is required"
+            )
+    else:
+        configured_scenario = str(config.get("scenario", {}).get("id", ""))
+        if args.scenario != configured_scenario:
+            raise ValueError(
+                f"Scenario {args.scenario!r} does not match configured scenario "
+                f"{configured_scenario!r} in {args.config}"
+            )
+        configured_path = config["data"]["rosbag_path"]
 
-    bag_path = Path(config["data"]["rosbag_path"]).expanduser()
+    bag_path = Path(configured_path).expanduser()
     if not bag_path.is_absolute():
-        bag_path = (args.config.parent / bag_path).resolve()
+        dataset_base = Path(config["data"].get("dataset_base", args.config.parent))
+        bag_path = (dataset_base.expanduser() / bag_path).resolve()
     if not bag_path.exists():
         raise ValueError(f"Configured rosbag does not exist: {bag_path}")
 
@@ -103,22 +133,55 @@ def resolve_options(args, config):
     return bag_path, loop, rate
 
 
-def play(bag_path: Path, loop: bool, rate: float, no_display: bool) -> int:
+def resolve_camera(args, config) -> str:
+    playback = config.get("playback_options") or {}
+    camera = args.camera or playback.get("camera", "back_view")
+    if camera not in {"back_view", "front_view", "both"}:
+        raise ValueError(
+            "Camera must be one of: back_view, front_view, both"
+        )
+    return camera
+
+
+def select_camera_topics(bag_topics: list[str], camera: str) -> list[str]:
+    requested = (
+        list(CAMERA_TOPICS.values())
+        if camera == "both"
+        else [CAMERA_TOPICS[camera]]
+    )
+    selected = [topic for topic in requested if topic in bag_topics]
+    missing = [topic for topic in requested if topic not in bag_topics]
+    if missing:
+        raise ValueError(
+            "Requested camera topic(s) not found in bag: " + ", ".join(missing)
+        )
+    return selected
+
+
+def build_play_command(
+    bag_path: Path, loop: bool, rate: float, topics: list[str]
+) -> list[str]:
     cmd = ["ros2", "bag", "play", str(bag_path)]
     if loop:
         cmd.append("--loop")
     if rate != 1.0:
         cmd.extend(["--rate", str(rate)])
+    cmd.extend(["--topics", *topics])
+    return cmd
+
+
+def play(
+    bag_path: Path, loop: bool, rate: float, camera: str, no_display: bool
+) -> int:
+    bag_topics = get_bag_image_topics(str(bag_path))
+    topics = select_camera_topics(bag_topics, camera)
+    cmd = build_play_command(bag_path, loop, rate, topics)
 
     print(f"Replaying: {bag_path}")
+    print(f"Camera selection: {camera}")
     print(f"Command: {' '.join(cmd)}")
 
     if no_display:
-        return subprocess.call(cmd)
-
-    topics = get_bag_image_topics(str(bag_path))
-    if not topics:
-        print("No compressed-image topics found; playing without display.")
         return subprocess.call(cmd)
 
     bag_proc = subprocess.Popen(cmd)
@@ -150,11 +213,12 @@ def main(argv=None):
     try:
         config = load_replay_config(args.config)
         bag_path, loop, rate = resolve_options(args, config)
+        camera = resolve_camera(args, config)
     except (OSError, TypeError, ValueError, yaml.YAMLError) as error:
         print(f"replay: error: {error}", file=sys.stderr)
         return 2
 
-    return play(bag_path, loop, rate, args.no_display)
+    return play(bag_path, loop, rate, camera, args.no_display)
 
 
 if __name__ == "__main__":

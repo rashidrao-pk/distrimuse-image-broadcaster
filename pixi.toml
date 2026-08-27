@@ -19,6 +19,7 @@ inspect-rosbag = "python -m cam_recorder.inspect_rosbag"
 replay = "python -m cam_recorder.replay"
 replay_formatted = "python -m cam_recorder.replay_formatted"
 replay-raw = "python -m cam_recorder.replay"
+summarize-dataset = "python -m cam_recorder.summarize_dataset"
 view = "python -m cam_recorder.viewer"
 test = "pytest tests/ -v"
 
