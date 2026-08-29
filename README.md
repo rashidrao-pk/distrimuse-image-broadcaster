@@ -25,14 +25,15 @@ Edit `config/config.yaml` with your camera names, RTSP URLs, desired FPS, and to
 
 ## Tasks
 
-| Task               | Description                                  | Usage                                      |
-| ------------------ | -------------------------------------------- | ------------------------------------------ |
-| `broadcast`        | Publish camera streams as ROS2 Image topics  | `pixi run broadcast`                       |
-| `inspect-rosbag`   | Inspect topics and sample frame information  | `pixi run inspect-rosbag`                  |
-| `replay`           | Replay a rosbag supplied directly on the CLI | `pixi run replay <bag_path>`               |
-| `replay_formatted` | Replay the rosbag configured for a scenario  | `pixi run replay_formatted --scenario 1_0` |
-| `view`             | Display live camera topics in OpenCV windows | `pixi run view`                            |
-| `test`             | Run the test suite                           | `pixi run test`                            |
+| Task                | Description                                  | Usage                                      |
+| ------------------- | -------------------------------------------- | ------------------------------------------ |
+| `broadcast`         | Publish camera streams as ROS2 Image topics  | `pixi run broadcast`                       |
+| `inspect-rosbag`    | Inspect topics and sample frame information  | `pixi run inspect-rosbag`                  |
+| `replay`            | Replay a rosbag supplied directly on the CLI | `pixi run replay <bag_path>`               |
+| `replay_formatted`  | Replay the rosbag configured for a scenario  | `pixi run replay_formatted --scenario 1_0` |
+| `summarize-dataset` | Write a CSV summary of all dataset rosbags   | `pixi run summarize-dataset`               |
+| `view`              | Display live camera topics in OpenCV windows | `pixi run view`                            |
+| `test`              | Run the test suite                           | `pixi run test`                            |
 
 ### broadcast
 
@@ -155,18 +156,25 @@ playback_options:
   loop: true
 ```
 
-Make sure that `data.rosbag_path` points to an existing `.mcap` file and that
-the command's scenario matches `scenario.id`. Then run:
+The `scenario_options` mapping in `config/cf_mac.yaml` contains one key and
+rosbag path per recording. Paths may be absolute or relative to
+`data.dataset_base`. Select any configured key when running the preview:
 
 ```bash
-pixi run replay_formatted --scenario 1_0
+pixi run replay_formatted --scenario 1_0 --camera back_view \
+```
+
+For example, to preview scenario ID 8, sub-ID 4:
+
+```bash
+pixi run replay_formatted --scenario 8_4 --loop
 ```
 
 The following command-line options override the YAML playback settings:
 
 ```bash
 # Force looping
-pixi run replay_formatted --scenario 1_0 --loop
+pixi run replay_formatted --scenario 1_0 --camera back_view --loop
 
 # Disable looping even when loop: true is configured
 pixi run replay_formatted --scenario 1_0 --no-loop
@@ -176,6 +184,15 @@ pixi run replay_formatted --scenario 1_0 --rate 2.0
 
 # Replay without opening the OpenCV viewer
 pixi run replay_formatted --scenario 1_0 --no-display
+
+# Publish only the back camera (also the default in cf_mac.yaml)
+pixi run replay_formatted --scenario 2_0 --camera back_view --loop
+
+# Publish only the front camera
+pixi run replay_formatted --scenario 2_0 --camera front_view --loop
+
+# Publish both camera topics
+pixi run replay_formatted --scenario 2_0 --camera both --loop
 
 # Use a different replay configuration
 pixi run replay_formatted --scenario 1_0 --config /path/to/replay.yaml
@@ -193,12 +210,38 @@ pixi run replay /path/to/recording_0.mcap --loop
 
 Press `Ctrl+C` to stop playback.
 
+## Check All scenarios:
+
+```bash
+pixi run replay_formatted --scenario 1_0
+
+pixi run replay_formatted --scenario 2_0
+
+pixi run replay_formatted --scenario 3_0
+
+pixi run replay_formatted --scenario 2_0
+
+pixi run replay_formatted --scenario 2_0
+
+pixi run replay_formatted --scenario 2_0
+
+pixi run replay_formatted --scenario 2_0
+
+```
+
 ## Inspect rosbag contents
 
 Inspect the rosbag selected by `config/cf_mac.yaml` without replaying it:
 
 ```bash
 pixi run inspect-rosbag
+```
+
+Inspect a configured scenario and save one sample from each camera under
+`output/inspect_rosbag/1_0/`:
+
+```bash
+pixi run inspect-rosbag --scenario 1_0
 ```
 
 The report includes bag size and duration, topic names and types, message
@@ -218,5 +261,45 @@ pixi run inspect-rosbag \
   --frames 3
 
 # Use another configuration
-pixi run inspect-rosbag --config /path/to/replay.yaml
+pixi run inspect-rosbag --scenario 1_0 --config /path/to/replay.yaml
+
+# Save three samples per image topic in a custom folder
+pixi run inspect-rosbag --scenario 1_0 --frames 3 --output-dir ./output
+
+# Print the report without saving sample images
+pixi run inspect-rosbag --scenario 1_0 --no-save-frames
 ```
+
+## Summarize a complete dataset
+
+Recursively inspect every `.mcap` file below `data.dataset_base` in
+`config/cf_mac.yaml` and create `dataset_summary.csv` in the project root:
+
+```bash
+pixi run summarize-dataset
+```
+
+Scenario ID, sub-ID, and recording date/time are extracted from names such as
+`Jul27_Scenario_8_4_2026-07-27_12-01-36_0.mcap`. Each CSV row also contains bag
+size, duration, start/end times, total messages, front/back frame counts and
+FPS, robot-state count, topics, ROS distribution, paths, and inspection errors.
+
+To select the dataset or output explicitly:
+
+```bash
+pixi run summarize-dataset /path/to/dataset --output /path/to/summary.csv
+```
+
+# 👥 Contributing
+
+We welcome contributions! Check out our [Contributing Guide](CONTRIBUTING.md) to get started.
+
+<p align="center">
+  <a href="https://github.com/rashidrao-pk/distrimuse-image-broadcaster/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=rashidrao-pk/distrimuse-image-broadcaster" alt="Contributors to distrimuse-image-broadcaster" />
+  </a>
+</p>
+
+<p align="center">
+  <b>Thank you to all our contributors!</b>
+</p>

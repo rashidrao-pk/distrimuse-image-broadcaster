@@ -15,6 +15,7 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "cf_mac.yaml"
+DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "output" / "inspect_rosbag"
 IMAGE_TYPES = {
     "sensor_msgs/msg/CompressedImage": CompressedImage,
     "sensor_msgs/msg/Image": Image,
@@ -38,6 +39,12 @@ def parse_args(argv=None):
         help=f"Config used when bag_path is omitted (default: {DEFAULT_CONFIG})",
     )
     parser.add_argument(
+        "--scenario",
+        "--scenatio",
+        dest="scenario",
+        help="Scenario key from scenario_options (for example: 1_0)",
+    )
+    parser.add_argument(
         "--topic",
         action="append",
         help="Only sample this topic; repeat to select multiple topics",
@@ -48,21 +55,47 @@ def parse_args(argv=None):
         default=1,
         help="Number of messages to inspect per selected topic (default: 1)",
     )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help=f"Base folder for saved sample frames (default: {DEFAULT_OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--no-save-frames",
+        action="store_true",
+        help="Inspect messages without saving image samples",
+    )
     return parser.parse_args(argv)
 
 
-def resolve_bag_path(bag_path: Path | None, config_path: Path) -> Path:
+def resolve_bag_path(
+    bag_path: Path | None, config_path: Path, scenario: str | None = None
+) -> Path:
     if bag_path is None:
         if not config_path.is_file():
             raise ValueError(f"Config file does not exist: {config_path}")
         with config_path.open(encoding="utf-8") as config_file:
             config = yaml.safe_load(config_file) or {}
-        configured_path = config.get("data", {}).get("rosbag_path")
+        data = config.get("data", {})
+        if scenario:
+            scenario_options = config.get("scenario_options") or config.get(
+                "scanario_options"
+            )
+            if not isinstance(scenario_options, dict) or scenario not in scenario_options:
+                available = ", ".join(sorted(scenario_options or {}))
+                raise ValueError(
+                    f"Unknown scenario key {scenario!r}. Available: {available}"
+                )
+            configured_path = scenario_options[scenario].get("rosbag_path")
+        else:
+            configured_path = data.get("rosbag_path")
         if not configured_path:
-            raise ValueError("Config must define data.rosbag_path")
+            raise ValueError("The selected config entry must define rosbag_path")
         bag_path = Path(configured_path).expanduser()
         if not bag_path.is_absolute():
-            bag_path = config_path.parent / bag_path
+            base_path = Path(data.get("dataset_base", config_path.parent)).expanduser()
+            bag_path = base_path / bag_path
 
     bag_path = bag_path.expanduser().resolve()
     if not bag_path.exists():
@@ -137,7 +170,7 @@ def inspect_image(serialized_data: bytes, message_type: str):
                 ("Image payload", f"{len(message.data):,} bytes"),
             ]
         )
-    return details
+    return details, decoded if isinstance(message, CompressedImage) else None
 
 
 def open_reader(bag_path: Path):
@@ -152,7 +185,18 @@ def open_reader(bag_path: Path):
     return reader
 
 
-def inspect_bag(bag_path: Path, selected_topics=None, frames_per_topic=1):
+def sample_filename(topic: str, sample_number: int) -> str:
+    camera_name = topic.removeprefix("/camera/").removesuffix("/image_raw")
+    safe_name = camera_name.strip("/").replace("/", "_")
+    return f"{safe_name}_sample_{sample_number:03d}.png"
+
+
+def inspect_bag(
+    bag_path: Path,
+    selected_topics=None,
+    frames_per_topic=1,
+    output_dir: Path | None = None,
+):
     if frames_per_topic < 1:
         raise ValueError("--frames must be at least 1")
 
@@ -213,8 +257,15 @@ def inspect_bag(bag_path: Path, selected_topics=None, frames_per_topic=1):
         print(f"    Serialized message: {len(serialized_data):,} bytes")
 
         if message_type in IMAGE_TYPES:
-            for label, value in inspect_image(serialized_data, message_type):
+            details, decoded_image = inspect_image(serialized_data, message_type)
+            for label, value in details:
                 print(f"    {label}: {value}")
+            if output_dir is not None and decoded_image is not None:
+                output_dir.mkdir(parents=True, exist_ok=True)
+                frame_path = output_dir / sample_filename(topic, inspected[topic])
+                if not cv2.imwrite(str(frame_path), decoded_image):
+                    raise RuntimeError(f"Could not save sample frame: {frame_path}")
+                print(f"    Saved frame: {frame_path}")
         else:
             print(
                 "    Fields: not decoded (the custom ROS message package "
@@ -225,8 +276,10 @@ def inspect_bag(bag_path: Path, selected_topics=None, frames_per_topic=1):
 def main(argv=None):
     args = parse_args(argv)
     try:
-        bag_path = resolve_bag_path(args.bag_path, args.config)
-        inspect_bag(bag_path, args.topic, args.frames)
+        bag_path = resolve_bag_path(args.bag_path, args.config, args.scenario)
+        output_key = args.scenario or bag_path.stem
+        output_dir = None if args.no_save_frames else args.output_dir / output_key
+        inspect_bag(bag_path, args.topic, args.frames, output_dir)
     except (OSError, RuntimeError, TypeError, ValueError, yaml.YAMLError) as error:
         print(f"inspect-rosbag: error: {error}", file=sys.stderr)
         return 2
