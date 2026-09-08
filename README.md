@@ -198,7 +198,7 @@ pixi run replay_formatted --scenario 2_0 --camera both --loop
 pixi run replay_formatted --scenario 1_0 --config /path/to/replay.yaml
 ```
 
-`--scenatio` is retained as an alias for compatibility, but `--scenario` is the
+`--scenario` is retained as an alias for compatibility, but `--scenario` is the
 preferred spelling.
 
 To bypass the scenario configuration and replay an MCAP file directly, use the

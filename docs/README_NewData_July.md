@@ -4,8 +4,8 @@
 
 
 ## Get rosbag info
-pixi run replay_formatted --scenatio 1_0  --loop
+pixi run replay_formatted --scenario 1_0  --loop
 
-pixi run replay_formatted --scenatio 1_0  --loop
+pixi run replay_formatted --scenario 1_0  --loop
 
 ```

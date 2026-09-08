@@ -21,8 +21,9 @@ def test_default_command_accepts_scenario_and_loop():
     assert args.loop is True
 
 
-def test_documented_scenatio_alias_is_supported():
-    args = parse_args(["--scenatio", "1_0"])
+
+def test_documented_scenario_alias_is_supported():
+    args = parse_args(["--scenario", "1_0"])
 
     assert args.scenario == "1_0"
 

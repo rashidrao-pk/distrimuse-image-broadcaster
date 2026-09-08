@@ -48,7 +48,7 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--scenario",
-        "--scenatio",
+        "--scenario",  # --- IGNORE ---
         dest="scenario",
         required=True,
         help="Scenario ID to replay (for example: 1_0)",

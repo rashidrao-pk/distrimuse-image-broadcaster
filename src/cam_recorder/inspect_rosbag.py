@@ -40,7 +40,7 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--scenario",
-        "--scenatio",
+        "--scenario",
         dest="scenario",
         help="Scenario key from scenario_options (for example: 1_0)",
     )
