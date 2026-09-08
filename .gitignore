@@ -20,4 +20,5 @@ bags/
 .claude/
 
 
-output/*
+# output/*
+output/inspect_rosbag/*

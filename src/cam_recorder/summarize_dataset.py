@@ -13,7 +13,7 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = PROJECT_ROOT / "config" / "cf_mac.yaml"
-DEFAULT_OUTPUT = PROJECT_ROOT / "dataset_summary.csv"
+DEFAULT_OUTPUT = PROJECT_ROOT / "output/dataset_summary.csv"
 NAME_PATTERN = re.compile(
     r"Scenario_(?P<scenario_id>\d+)_(?P<sub_id>\d+)_"
     r"(?P<date>\d{4}-\d{2}-\d{2})_(?P<time>\d{2}-\d{2}-\d{2})"
@@ -24,7 +24,7 @@ CORE_COLUMNS = [
     "scenario_key",
     "recording_datetime",
     "bag_name",
-    "relative_path",
+    # "relative_path",
     "size_bytes",
     "size_gib",
     "duration_seconds",
@@ -38,8 +38,8 @@ CORE_COLUMNS = [
     "back_fps",
     "topic_count",
     "topics",
-    "storage_id",
-    "ros_distro",
+    # "storage_id",
+    # "ros_distro",
     "error",
 ]
 
@@ -124,7 +124,7 @@ def summarize_bag(bag_path: Path, dataset_base: Path) -> dict[str, object]:
     row: dict[str, object] = {
         **parse_bag_name(bag_path),
         "bag_name": bag_path.name,
-        "relative_path": str(bag_path.relative_to(dataset_base)),
+        # "relative_path": str(bag_path.relative_to(dataset_base)),
         "error": "",
     }
     try:
@@ -154,8 +154,8 @@ def summarize_bag(bag_path: Path, dataset_base: Path) -> dict[str, object]:
                 "topics": "; ".join(
                     f"{name} ({count})" for name, count in sorted(topic_counts.items())
                 ),
-                "storage_id": metadata.storage_identifier,
-                "ros_distro": metadata.ros_distro,
+                # "storage_id": metadata.storage_identifier,
+                # "ros_distro": metadata.ros_distro,
             }
         )
     except Exception as error:  # Keep broken bags visible in the dataset report.
